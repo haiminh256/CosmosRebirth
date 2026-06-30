@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Cosmos/Logger.h>
+#include <Cosmos/Core/Logger.h>
 
 #define CORE_TRACE(...)    ::Cosmos::Logger::GetCoreLogger()->trace(__VA_ARGS__)
 #define CORE_INFO(...)     ::Cosmos::Logger::GetCoreLogger()->info(__VA_ARGS__)

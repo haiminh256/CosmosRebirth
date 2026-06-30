@@ -14,13 +14,7 @@ namespace Cosmos {
 		void Terminate();
 		bool ShouldClose();
 		void InitVkInstance();
-		void CreateVkInstance();
-		void LinkVkInstance();
-		void ShowSupportedEXT();
 	private:
 		GLFWwindow* window;
-		VkInstance instance;
-		VkApplicationInfo appInfo{};
-		VkInstanceCreateInfo createInfo{};
 	};
 }

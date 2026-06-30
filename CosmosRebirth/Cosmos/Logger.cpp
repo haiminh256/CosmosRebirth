@@ -1,4 +1,4 @@
-#include <Cosmos/Logger.h>
+#include <Cosmos/Core/Logger.h>
 
 namespace Cosmos
 {
