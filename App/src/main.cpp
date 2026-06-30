@@ -14,7 +14,6 @@ int main() {
 
 	Renderer.Init();
 	Renderer.ShowSupportedEXT();
-	Renderer.SetupDebugMessenger();
 	Renderer.ShowAvailableValidationLayers();
 
 	while (!App.ShouldClose()) {

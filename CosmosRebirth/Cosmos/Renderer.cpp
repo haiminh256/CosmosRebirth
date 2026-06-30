@@ -101,6 +101,10 @@ namespace Cosmos {
             return;
         }
 
+        // ĐÃ SỬA: Ngắt kết nối pNext ngay lập tức sau khi Instance được tạo thành công.
+        // Điều này ngăn không cho biến Class createInfo giữ địa chỉ của debugCreateInfo (đã bị hủy khi ra khỏi hàm Init)
+        createInfo.pNext = nullptr;
+
         CORE_INFO("Engine::InitVkInstance success");
 
         // 7. Thiết lập Debug Messenger cho các lỗi sau khi khởi tạo
@@ -110,17 +114,18 @@ namespace Cosmos {
     void Renderer::Shutdown() {
         CORE_INFO("Renderer::Shutdown() started");
 
-        if (EnableValidationLayers) {
-            if (debugMessenger != VK_NULL_HANDLE) {
-                CORE_INFO("Destroying Debug Messenger...");
-                DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
-                debugMessenger = VK_NULL_HANDLE;
-            }
-            else {
-                CORE_WARN("debugMessenger is already NULL, skipping destruction.");
-            }
+        // 1. Hủy Debug Messenger độc lập (Messenger số 2) trước
+        if (debugMessenger != VK_NULL_HANDLE) {
+            CORE_INFO("Destroying Debug Messenger...");
+            DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+            debugMessenger = VK_NULL_HANDLE;
         }
 
+        // 2. Nếu createInfo là biến Class, ta phải ngắt kết nối pNext trước khi hủy Instance
+        createInfo.pNext = nullptr;
+        createInfo.enabledLayerCount = 0;
+
+        // 3. Hủy Instance cha
         if (instance != VK_NULL_HANDLE) {
             CORE_INFO("Destroying VkInstance...");
             vkDestroyInstance(instance, nullptr);
@@ -210,27 +215,29 @@ namespace Cosmos {
         }
     }
 
+    // ĐÃ HOÀN THIỆN: Hàm truy vấn và xuất log danh sách extensions hệ thống hỗ trợ
     void Renderer::ShowSupportedEXT() {
         uint32_t extensionCount = 0;
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
         std::vector<VkExtensionProperties> extensions(extensionCount);
         vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
 
-        CORE_INFO("Supported extensions:");
+        CORE_INFO("Supported Vulkan Extensions:");
         for (const auto& extension : extensions) {
-            CORE_INFO(extension.extensionName);
+            CORE_INFO(" - {0} (Spec Version: {1})", extension.extensionName, extension.specVersion);
         }
     }
-
+    // Thêm hàm này vào cuối file Renderer.cpp, ngay dưới hàm ShowSupportedEXT()
     void Renderer::ShowAvailableValidationLayers() {
         uint32_t layerCount = 0;
         vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-        std::vector<VkLayerProperties> layers(layerCount);
-        vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
+        std::vector<VkLayerProperties> availableLayers(layerCount);
+        vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-        CORE_INFO("Available Validation Layers:");
-        for (const auto& layer : layers) {
-            CORE_INFO(layer.layerName);
+        CORE_INFO("Available Vulkan Validation Layers:");
+        for (const auto& layer : availableLayers) {
+            CORE_INFO(" - {0} (Version: {1})", layer.layerName, layer.implementationVersion);
         }
     }
+
 }

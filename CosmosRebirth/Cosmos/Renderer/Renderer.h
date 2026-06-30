@@ -11,17 +11,11 @@ namespace Cosmos {
         void ShowAvailableValidationLayers();
 	private:
 		VkInstance instance;
-		VkApplicationInfo appInfo{};
-		VkInstanceCreateInfo createInfo{};
+        VkApplicationInfo appInfo{};
+        VkInstanceCreateInfo createInfo{};
     private:
         void DestroyDebugMessenger();
         VkDebugUtilsMessengerEXT debugMessenger{};
-
-        const std::vector<const char*> ValidationLayers = {
-            "VK_LAYER_KHRONOS_validation"
-        };
-
-        std::vector<const char*> RequiredExtensions;
 
     private:
         bool CheckValidationLayerSupport();
