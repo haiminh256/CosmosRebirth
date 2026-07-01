@@ -13,16 +13,20 @@ int main() {
 	App.SetWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 	App.CreateAppWindow(800, 600, "Engine Window");
 
+
     Renderer.Init();
     Renderer.ShowSupportedEXT();
     Renderer.ShowAvailableValidationLayers();
     Renderer.SetupDebugMessenger();
 
-    Renderer.createSurface(App.getWindow());
+    Renderer.CreateSurface(App.getWindow());
 
     Renderer.PickPhysicalDevice();
     Renderer.CreateLogicalDevice();
     Renderer.CreatePresentationQueue();
+
+	Renderer.CreateSwapChain(App.getWindow());
+	Renderer.CreateImageViews();
 
 	while (!App.ShouldClose()) {
 		App.EventHandle();

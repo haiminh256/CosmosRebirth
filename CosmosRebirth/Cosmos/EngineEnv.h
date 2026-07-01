@@ -9,6 +9,7 @@
 #include <set>
 #include <optional>
 #include <cstring>
+#include <algorithm>
 
 #ifdef _WIN32
 #define COSMOS_API __declspec(dllexport)
