@@ -44,4 +44,7 @@ namespace Cosmos {
 	bool Engine::ShouldClose() {
 		return glfwWindowShouldClose(window);
 	}
+	GLFWwindow* Engine::getWindow() {
+		return window;
+	}
 }

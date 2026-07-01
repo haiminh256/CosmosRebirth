@@ -1,13 +1,82 @@
 #include <Cosmos/Renderer/Renderer.h>
+#include <Cosmos/Engine.h>
 #include <Cosmos/Core/Log.h>
-#include <cstring> // Cần thiết cho strcmp
 
 namespace {
     // Mảng hằng số Validation Layers toàn cục trong file cpp để tránh lỗi cảnh báo C4251
     const std::vector<const char*> ValidationLayers = {
         "VK_LAYER_KHRONOS_validation"
     };
+    // --- THÊM MỚI: Mảng lưu các Extension bắt buộc của phần cứng (để tạo Swapchain)
+    const std::vector<const char*> DeviceExtensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
 
+    // --- THÊM MỚI: Cấu trúc kiểm tra chỉ số hàng đợi (Queue Family Index)
+    struct QueueFamilyIndices {
+    
+        std::optional<uint32_t> graphicsFamily;
+        std::optional<uint32_t> presentFamily;
+
+        bool isComplete() {
+            return graphicsFamily.has_value() && presentFamily.has_value();
+        }
+    };
+
+    // --- THÊM MỚI: Hàm helper truy vấn nhóm hàng đợi từ GPU phần cứng
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
+        QueueFamilyIndices indices;
+        uint32_t queueFamilyCount = 0;
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+        std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+        vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+        int i = 0;
+        for (const auto& queueFamily : queueFamilies) {
+            if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+                indices.graphicsFamily = i;
+            }
+
+            VkBool32 presentSupport = false;
+            // Nếu dự án của bạn chưa tạo Surface, tạm thời ép true để quét được GPU
+            if (surface != VK_NULL_HANDLE) {
+                vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+            }
+            else {
+                presentSupport = true;
+            }
+
+            if (presentSupport) {
+                indices.presentFamily = i;
+            }
+
+            if (indices.isComplete()) break;
+            i++;
+        }
+        return indices;
+    }
+
+    // --- THÊM MỚI: Hàm helper kiểm tra GPU có hỗ trợ các Extension cần thiết không
+    bool checkDeviceExtensionSupport(VkPhysicalDevice device) {
+        uint32_t extensionCount;
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+        std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+        vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, availableExtensions.data());
+
+        for (const char* required : DeviceExtensions) {
+            bool found = false;
+            for (const auto& available : availableExtensions) {
+                if (strcmp(required, available.extensionName) == 0) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return false;
+        }
+        return true;
+    }
     // Hàm tạo Debug Messenger chuẩn hóa
     VkResult CreateDebugUtilsMessengerEXT(
         VkInstance instance,
@@ -83,8 +152,7 @@ namespace Cosmos {
         // 5. Thiết lập Validation Layers và Debug Messenger lúc khởi tạo
         VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
         if (EnableValidationLayers) {
-            createInfo.enabledLayerCount = static_cast<uint32_t>(ValidationLayers.size());
-            createInfo.ppEnabledLayerNames = ValidationLayers.data();
+            createInfo.enabledLayerCount = 0;
 
             // Bật debug ngay trong quá trình tạo/hủy Instance
             PopulateDebugMessengerCreateInfo(debugCreateInfo);
@@ -108,24 +176,30 @@ namespace Cosmos {
         CORE_INFO("Engine::InitVkInstance success");
 
         // 7. Thiết lập Debug Messenger cho các lỗi sau khi khởi tạo
-        SetupDebugMessenger();
     }
 
     void Renderer::Shutdown() {
         CORE_INFO("Renderer::Shutdown() started");
 
-        // 1. Hủy Debug Messenger độc lập (Messenger số 2) trước
+        // --- THAY ĐỔI: Phải hủy thiết bị logic con trước khi chạm vào Instance cha ---
+        if (device != VK_NULL_HANDLE) {
+            CORE_INFO("Destroying VkDevice...");
+            vkDestroyDevice(device, nullptr);
+            device = VK_NULL_HANDLE;
+        }
+
+        // ... Giữ nguyên phần dọn dẹp debugMessenger và instance cũ bên dưới ...
         if (debugMessenger != VK_NULL_HANDLE) {
             CORE_INFO("Destroying Debug Messenger...");
             DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
             debugMessenger = VK_NULL_HANDLE;
         }
 
-        // 2. Nếu createInfo là biến Class, ta phải ngắt kết nối pNext trước khi hủy Instance
         createInfo.pNext = nullptr;
         createInfo.enabledLayerCount = 0;
 
-        // 3. Hủy Instance cha
+        vkDestroySurfaceKHR(instance, surface, nullptr);
+
         if (instance != VK_NULL_HANDLE) {
             CORE_INFO("Destroying VkInstance...");
             vkDestroyInstance(instance, nullptr);
@@ -134,6 +208,7 @@ namespace Cosmos {
 
         CORE_INFO("Renderer::Shutdown() finished");
     }
+
 
     bool Renderer::CheckValidationLayerSupport() {
         uint32_t layerCount = 0;
@@ -239,5 +314,120 @@ namespace Cosmos {
             CORE_INFO(" - {0} (Version: {1})", layer.layerName, layer.implementationVersion);
         }
     }
+    void Renderer::PickPhysicalDevice() {
+        uint32_t deviceCount = 0;
+        vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 
+        if (deviceCount == 0) {
+            CORE_ERROR("Failed to find GPUs with Vulkan support!");
+            return;
+        }
+
+        std::vector<VkPhysicalDevice> devices(deviceCount);
+        vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+        for (const auto& device : devices) {
+            VkPhysicalDeviceProperties deviceProperties;
+            vkGetPhysicalDeviceProperties(device, &deviceProperties);
+
+            // Hiện tại truyền VK_NULL_HANDLE cho surface, sau này khi bạn code Window, hãy truyền biến VkSurfaceKHR vào
+            QueueFamilyIndices indices = findQueueFamilies(device, VK_NULL_HANDLE);
+            bool extensionsSupported = checkDeviceExtensionSupport(device);
+
+            if (indices.isComplete() && extensionsSupported) {
+                physicalDevice = device;
+                CORE_INFO("CosmosRebirth selected Physical Device: {0}", deviceProperties.deviceName);
+                break;
+            }
+        }
+
+        if (physicalDevice == VK_NULL_HANDLE) {
+            CORE_ERROR("Failed to find a suitable GPU!");
+        }
+    }
+    void Renderer::CreateLogicalDevice() {
+        if (physicalDevice == VK_NULL_HANDLE) return;
+
+        QueueFamilyIndices indices = findQueueFamilies(physicalDevice, VK_NULL_HANDLE);
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+
+        // Dùng std::set để lọc trùng ID vì trên chip Intel 520, Graphics và Present thường chung ID = 0
+        std::set<uint32_t> uniqueQueueFamilies = {
+            indices.graphicsFamily.value(),
+            indices.presentFamily.value()
+        };
+
+        float queuePriority = 1.0f;
+        for (uint32_t queueFamily : uniqueQueueFamilies) {
+            VkDeviceQueueCreateInfo queueCreateInfo{};
+            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfo.queueFamilyIndex = queueFamily;
+            queueCreateInfo.queueCount = 1;
+            queueCreateInfo.pQueuePriorities = &queuePriority;
+            queueCreateInfos.push_back(queueCreateInfo);
+        }
+
+        VkPhysicalDeviceFeatures deviceFeatures{}; // Tạm thời để cấu hình trống
+
+        deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+        deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
+        deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+        deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(DeviceExtensions.size());
+        deviceCreateInfo.ppEnabledExtensionNames = DeviceExtensions.data();
+
+        if (EnableValidationLayers) {
+            deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(ValidationLayers.size());
+        }
+        else {
+            deviceCreateInfo.enabledLayerCount = 0;
+        }
+
+        if (vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS) {
+            CORE_ERROR("Failed to create Logical Device!");
+            return;
+        }
+        CORE_INFO("CosmosRebirth Create Logical Device success!");
+
+        // Trích xuất Handle của luồng thực thi lệnh (Queue) ra biến Class để điều khiển render
+        vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+        vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+        CORE_INFO("Successfully extracted Graphics and Present Queues.");
+    }
+    void Renderer::SetupSurfaceWin32(GLFWwindow* window) {
+        VkWin32SurfaceCreateInfoKHR createinfo{};
+        createinfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+        createinfo.hwnd = glfwGetWin32Window(window);
+        createinfo.hinstance = GetModuleHandle(nullptr);
+        if (vkCreateWin32SurfaceKHR(instance, &createinfo, nullptr, &surface) != VK_SUCCESS) {
+            CORE_ERROR("failed to create window surface!");
+        }
+    }
+    void Renderer::SetupSurfaceWayland() {
+
+    }
+    void Renderer::createSurface(GLFWwindow* window) {
+        if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS) {
+            CORE_ERROR("failed to create window surface!");
+        }
+    }
+    void Renderer::CreatePresentationQueue() {
+        QueueFamilyIndices indices = findQueueFamilies(physicalDevice, surface);
+
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+        std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+
+        float queuePriority = 1.0f;
+        for (uint32_t queueFamily : uniqueQueueFamilies) {
+            VkDeviceQueueCreateInfo queueCreateInfo{};
+            queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+            queueCreateInfo.queueFamilyIndex = queueFamily;
+            queueCreateInfo.queueCount = 1;
+            queueCreateInfo.pQueuePriorities = &queuePriority;
+            queueCreateInfos.push_back(queueCreateInfo);
+        }
+        deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
+        deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
+        vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
+    }
 }

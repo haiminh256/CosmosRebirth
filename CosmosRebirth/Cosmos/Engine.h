@@ -14,6 +14,7 @@ namespace Cosmos {
 		void Terminate();
 		bool ShouldClose();
 		void InitVkInstance();
+		GLFWwindow* getWindow();
 	private:
 		GLFWwindow* window;
 	};

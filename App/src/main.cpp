@@ -1,6 +1,7 @@
 #include <Cosmos/Engine.h>
 #include <Cosmos/Core/Log.h>
 #include <Cosmos/Renderer/Renderer.h>
+#include <optional>
 
 int main() {
 	Cosmos::Engine App;
@@ -15,6 +16,10 @@ int main() {
 	Renderer.Init();
 	Renderer.ShowSupportedEXT();
 	Renderer.ShowAvailableValidationLayers();
+	Renderer.SetupDebugMessenger();
+	Renderer.PickPhysicalDevice();
+	Renderer.CreateLogicalDevice();
+	Renderer.createSurface(App.getWindow());
 
 	while (!App.ShouldClose()) {
 		App.EventHandle();

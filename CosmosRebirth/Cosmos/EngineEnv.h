@@ -1,11 +1,17 @@
 #pragma once
+#define VK_USE_PLATFORM_WIN32_KHR
 #define GLFW_INCLUDE_VULKAN
-#include <iostream>
 #include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#include <iostream>
 #include <glm/glm.hpp>
 #include <spdlog/spdlog.h>
 #include <vulkan/vulkan.h>
 #include <vector>
+#include <set>
+#include <optional>
+#include <cstring>
 
 #ifdef _WIN32
 #define COSMOS_API __declspec(dllexport)
