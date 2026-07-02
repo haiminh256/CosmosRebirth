@@ -3,13 +3,15 @@
 #include <Cosmos/Renderer/Renderer.h>
 #include <Cosmos/Renderer/Shader.h>
 #include <Cosmos/Renderer/Swapchain.h>
-#include <optional>
+#include <Cosmos/Renderer/Pipeline.h>
 
 int main() {
 	Cosmos::Engine App;
 	Cosmos::Renderer Renderer;
 	Cosmos::Shader Shader;
 	Cosmos::Swapchain Swapchain;
+	Cosmos::Pipeline Pipeline;
+
 	if (!App.Init()) {
 		App.Terminate();
 	}
@@ -31,6 +33,8 @@ int main() {
 	Swapchain.CreateSwapchain(Renderer.getPhysicalDevice(), Renderer.getVkDevice(), Renderer.getSurface(), App.getWindow(), Renderer.getQueueFamilyIndices());
 	Swapchain.CreateImageViews();
 
+	Pipeline.CreatePipeline(Renderer.getVkDevice(), Swapchain);
+
 	Shader.CreateGraphicsPipeline(Renderer.getVkDevice(), "Shader/vert.spv", "Shader/frag.spv");
 	Shader.CreateStage();
 
@@ -38,6 +42,7 @@ int main() {
 		App.EventHandle();
 	}
 
+	Pipeline.DestroyPipeline();
 	Shader.CleanUp(Renderer.getVkDevice(), Shader.getVertShaderModule(), Shader.getFragShaderModule());
 	Renderer.Shutdown();
 	App.Quit();
