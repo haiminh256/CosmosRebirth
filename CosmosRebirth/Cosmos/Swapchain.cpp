@@ -1,4 +1,4 @@
-#include <Cosmos/Renderer/SwapChain.h>
+#include <Cosmos/Renderer/Swapchain.h>
 #include <Cosmos/Renderer/Renderer.h>
 #include <Cosmos/Core/Log.h>
 
@@ -75,7 +75,7 @@ namespace Cosmos
         VkDevice device,
         VkSurfaceKHR surface,
         GLFWwindow* window,
-        QueueFamilyIndices& indices)
+        QueueFamilyIndices indices)
     {
         logicalDevice = device;
 

@@ -5,7 +5,7 @@
 #include <Cosmos/Core/Log.h>
 
 namespace Cosmos {
-	void Pipeline::CreatePipeline(VkDevice device, Swapchain& swapchain) {
+	void Pipeline::CreatePipeline(VkDevice device, Swapchain swapchain) {
 		this->device = device;
 
 		CreateVertexInput();

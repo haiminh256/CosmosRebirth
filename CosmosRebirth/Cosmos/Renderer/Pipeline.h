@@ -8,7 +8,7 @@ namespace Cosmos
     class COSMOS_API Pipeline
     {
     public:
-        void CreatePipeline(VkDevice device, Swapchain& swapchain);
+        void CreatePipeline(VkDevice device, Swapchain swapchain);
         void DestroyPipeline();
 
     private:

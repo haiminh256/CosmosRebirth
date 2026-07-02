@@ -12,7 +12,7 @@ namespace Cosmos
             VkDevice device,
             VkSurfaceKHR surface,
             GLFWwindow* window,
-            QueueFamilyIndices& indices);
+            QueueFamilyIndices indices);
 
         void COSMOS_API CreateImageViews();
 
