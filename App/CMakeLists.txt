@@ -16,4 +16,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Cosmos)
 set_target_properties(Game PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 )
+add_custom_command(TARGET Game POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/Shader
+        ${CMAKE_BINARY_DIR}/bin/Shader
+)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_SOURCE_DIR}/CosmosRebirth)
