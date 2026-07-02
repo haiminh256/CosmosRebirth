@@ -18,6 +18,8 @@ endif()
 
 find_package(Vulkan REQUIRED)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 # Include sub-projects.
 add_subdirectory ("CosmosRebirth")
 add_subdirectory ("App")
